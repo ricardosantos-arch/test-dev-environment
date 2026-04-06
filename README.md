@@ -1,5 +1,7 @@
 # Proffer — Ambiente de Desenvolvimento Local
 
+![Proffer Development Ecosystem](img/Gemini_Generated_Image_g5hki1g5hki1g5hk.png)
+
 ## Requisitos
 
 - **Docker Desktop** (Windows/macOS) ou **Docker Engine** (Linux)
