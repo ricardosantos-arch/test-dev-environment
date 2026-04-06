@@ -41,21 +41,7 @@ services:
         condition: service_healthy
       mongodb:
         condition: service_healthy
-    command: >
-      bash -c "
-        pip install --quiet
-          psycopg2-binary
-          pymongo
-          google-cloud-bigquery
-          google-cloud-storage
-          apache-beam[gcp]
-          db-dtypes
-          pyarrow
-          sqlalchemy &&
-        start-notebook.py
-          --NotebookApp.token='proffer'
-          --NotebookApp.allow_origin='*'
-      "
+    command: bash -c "pip install --quiet psycopg2-binary pymongo google-cloud-bigquery google-cloud-storage db-dtypes pyarrow sqlalchemy && start-notebook.sh --NotebookApp.token='proffer' --NotebookApp.allow_origin='*'"
 
 volumes:
   jupyter_data:
