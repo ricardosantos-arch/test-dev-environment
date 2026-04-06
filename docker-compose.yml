@@ -1,0 +1,104 @@
+# =============================================================================
+# Proffer — Ambiente de Desenvolvimento Local
+# =============================================================================
+# Serviços de infraestrutura compartilhados por todos os perfis.
+# Este é o compose BASE — sempre sobe junto com qualquer perfil.
+#
+# Uso rápido:
+#   ./setup.sh              (Linux/macOS)
+#   .\setup.ps1             (Windows)
+#
+# Uso manual:
+#   docker compose up -d                        → só infra (MongoDB + PostgreSQL)
+#   docker compose -f docker-compose.yml -f docker-compose.backend.yml up -d
+#   docker compose -f docker-compose.yml -f docker-compose.frontend.yml up -d
+#   docker compose -f docker-compose.yml -f docker-compose.data.yml up -d
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # PostgreSQL — Espelha Cloud SQL produção (db: proffer, db_central_apis)
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:15-alpine
+    container_name: proffer-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: proffer_dev
+      POSTGRES_PASSWORD: proffer_dev_2026
+      POSTGRES_DB: proffer
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts/postgres:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U proffer_dev"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # MongoDB — Espelha MongoDB Atlas produção
+  # ---------------------------------------------------------------------------
+  mongodb:
+    image: mongo:7-jammy
+    container_name: proffer-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: proffer_dev
+      MONGO_INITDB_ROOT_PASSWORD: proffer_dev_2026
+      MONGO_INITDB_DATABASE: Proffer
+    volumes:
+      - mongodb_data:/data/db
+      - ./init-scripts/mongodb:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # Mongo Express — Interface web para MongoDB (opcional, útil para debug)
+  # ---------------------------------------------------------------------------
+  mongo-express:
+    image: mongo-express:1-20-alpine3.19
+    container_name: proffer-mongo-ui
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: proffer_dev
+      ME_CONFIG_MONGODB_ADMINPASSWORD: proffer_dev_2026
+      ME_CONFIG_MONGODB_URL: mongodb://proffer_dev:proffer_dev_2026@mongodb:27017/
+      ME_CONFIG_BASICAUTH: "false"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    profiles:
+      - tools
+
+  # ---------------------------------------------------------------------------
+  # pgAdmin — Interface web para PostgreSQL (opcional)
+  # ---------------------------------------------------------------------------
+  pgadmin:
+    image: dpage/pgadmin4:8
+    container_name: proffer-pgadmin
+    restart: unless-stopped
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: dev@proffer.com.br
+      PGADMIN_DEFAULT_PASSWORD: proffer_dev_2026
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - tools
+
+volumes:
+  postgres_data:
+  mongodb_data:

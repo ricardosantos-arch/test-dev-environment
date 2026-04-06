@@ -1,0 +1,40 @@
+# =============================================================================
+# Proffer — Perfil Frontend (React/Vite)
+# =============================================================================
+# Para: frontend-devs, full stack
+#
+# Sobe: ProfferApplicationV2 (React 18 + Vite) com hot reload
+# Dependências: docker-compose.yml (para APIs) + opcionalmente backend
+#
+# Uso:
+#   docker compose -f docker-compose.yml -f docker-compose.frontend.yml up -d
+#
+# Uso com backend junto:
+#   docker compose -f docker-compose.yml -f docker-compose.backend.yml -f docker-compose.frontend.yml up -d
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # ProfferApplicationV2 — Dashboard React/Vite com hot reload
+  # ---------------------------------------------------------------------------
+  proffer-frontend:
+    build:
+      context: ../../repos/ProfferApplicationV2
+      dockerfile: Dockerfile.dev
+    container_name: proffer-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.frontend
+    environment:
+      VITE_COGNITO_REGION: us-east-2
+      VITE_COGNITO_USER_POOL_ID: mock-pool-id
+      VITE_COGNITO_CLIENT_ID: mock-client-id
+      VITE_COGNITO_IDENTITY_POOL_ID: mock-identity-pool-id
+      VITE_STRIPE_PUBLISHABLE_KEY: pk_test_mock
+      VITE_API_URL: http://localhost:5000
+      VITE_PARCEIROS_API_URL: http://localhost:5001
+    volumes:
+      - ../../repos/ProfferApplicationV2/src:/app/src
+    stdin_open: true

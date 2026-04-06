@@ -1,0 +1,61 @@
+# =============================================================================
+# Proffer — Perfil Data (Ciência de Dados + Engenharia de Dados)
+# =============================================================================
+# Para: engenheiros de dados, cientistas de dados, P&D, analytics
+#
+# Sobe: JupyterLab com libs de dados + acesso a PostgreSQL e MongoDB locais
+# Dependências: docker-compose.yml (PostgreSQL + MongoDB)
+#
+# Uso:
+#   docker compose -f docker-compose.yml -f docker-compose.data.yml up -d
+#
+# Acesso: http://localhost:8888 (token: proffer)
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # JupyterLab — Notebooks com stack de dados Proffer
+  # ---------------------------------------------------------------------------
+  jupyter:
+    image: jupyter/datascience-notebook:python-3.10
+    container_name: proffer-jupyter
+    restart: unless-stopped
+    ports:
+      - "8888:8888"
+    environment:
+      JUPYTER_TOKEN: proffer
+      JUPYTER_ENABLE_LAB: "yes"
+      PG_HOST: postgres
+      PG_PORT: "5432"
+      PG_USER: proffer_dev
+      PG_PASSWORD: proffer_dev_2026
+      PG_DATABASE: proffer
+      MONGO_URI: mongodb://proffer_dev:proffer_dev_2026@mongodb:27017/Proffer?authSource=admin
+      GCP_PROJECT_ID: proffer-bigquery-dev
+    volumes:
+      - ../../repos:/home/jovyan/repos
+      - ./notebooks:/home/jovyan/notebooks
+      - jupyter_data:/home/jovyan/work
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    command: >
+      bash -c "
+        pip install --quiet
+          psycopg2-binary
+          pymongo
+          google-cloud-bigquery
+          google-cloud-storage
+          apache-beam[gcp]
+          db-dtypes
+          pyarrow
+          sqlalchemy &&
+        start-notebook.py
+          --NotebookApp.token='proffer'
+          --NotebookApp.allow_origin='*'
+      "
+
+volumes:
+  jupyter_data:

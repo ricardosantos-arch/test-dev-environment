@@ -1,0 +1,76 @@
+# =============================================================================
+# Proffer — Perfil Backend (Flask APIs)
+# =============================================================================
+# Para: backend-devs, tech leads, full stack, engenheiros de plataforma
+#
+# Sobe: ProfferAPI + ProfferParceirosAPI + API Extrator
+# Dependências: docker-compose.yml (PostgreSQL + MongoDB)
+#
+# Uso:
+#   docker compose -f docker-compose.yml -f docker-compose.backend.yml up -d
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # ProfferAPI — API principal (dashboard, Stripe, onboarding)
+  # ---------------------------------------------------------------------------
+  proffer-api:
+    build:
+      context: ../../repos/ProfferAPI
+      dockerfile: Dockerfile
+    container_name: proffer-api
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env.backend
+    environment:
+      ENVIRONMENT: development
+      HOSTNAME_RDS: postgres
+      PORT_RDS: "5432"
+      USER_RDS: proffer_dev
+      PASSWORD_RDS: proffer_dev_2026
+      DBNAME_RDS: proffer
+      DOCDB_ENDPOINT: mongodb://proffer_dev:proffer_dev_2026@mongodb:27017/Proffer?authSource=admin
+      DOCDB_USER: proffer_dev
+      DOCDB_PW: proffer_dev_2026
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ---------------------------------------------------------------------------
+  # ProfferParceirosAPI — API de parceiros (cadastro, integração ERP)
+  # ---------------------------------------------------------------------------
+  proffer-parceiros-api:
+    build:
+      context: ../../repos/ProfferParceirosAPI
+      dockerfile: Dockerfile
+    container_name: proffer-parceiros-api
+    restart: unless-stopped
+    ports:
+      - "5001:5000"
+    env_file:
+      - .env.backend
+    environment:
+      ENVIROMMENT: development
+      DATABASE_URI: postgresql://proffer_dev:proffer_dev_2026@postgres:5432/db_central_apis
+      HOSTNAME_RDS: postgres
+      PORT_RDS: "5432"
+      USER_RDS: proffer_dev
+      PASSWORD_RDS: proffer_dev_2026
+      DBNAME_RDS: proffer
+      DOCDB_URI: mongodb://proffer_dev:proffer_dev_2026@mongodb:27017/?authSource=admin
+      DOCDB_USER: proffer_dev
+      DOCDB_PW: proffer_dev_2026
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
