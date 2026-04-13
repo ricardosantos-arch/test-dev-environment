@@ -1,9 +1,9 @@
-name: ClickUp Status Sync
+name: "ClickUp Status Sync"
 
 # Sincroniza status do card ClickUp quando um review e submetido.
 # Ref: Git Workflow & ClickUp Integration - Secao 6.2 Workflow 2
 
-"on":
+on:
   pull_request_review:
     types: [submitted]
 
@@ -46,14 +46,13 @@ jobs:
           REVIEW_STATE="${{ github.event.review.state }}"
           REVIEWER="${{ github.event.review.user.login }}"
           PR_URL="${{ github.event.pull_request.html_url }}"
-          PR_TITLE="${{ github.event.pull_request.title }}"
 
           if [ "$REVIEW_STATE" = "approved" ]; then
             STATUS="qa / testing"
             COMMENT="Code review aprovado por @${REVIEWER}. PR auto-criado para developer. [Ver PR](${PR_URL})"
           elif [ "$REVIEW_STATE" = "changes_requested" ]; then
             STATUS="changes req."
-            COMMENT="Code review reprovado por @${REVIEWER}. Verifique os apontamentos: [PR #${{ github.event.pull_request.number }}](${PR_URL})"
+            COMMENT="Code review reprovado por @${REVIEWER}. Verifique os apontamentos: [PR](${PR_URL})"
           else
             echo "Review state '$REVIEW_STATE' - no action needed"
             exit 0
@@ -61,14 +60,12 @@ jobs:
 
           echo "Updating ClickUp task $TASK_ID to status: $STATUS"
 
-          # Atualizar status
           curl -s -X PUT \
             "https://api.clickup.com/api/v2/task/${TASK_ID}" \
             -H "Authorization: ${CLICKUP_API_TOKEN}" \
             -H "Content-Type: application/json" \
             -d "{\"status\": \"${STATUS}\"}"
 
-          # Adicionar comentario
           curl -s -X POST \
             "https://api.clickup.com/api/v2/task/${TASK_ID}/comment" \
             -H "Authorization: ${CLICKUP_API_TOKEN}" \

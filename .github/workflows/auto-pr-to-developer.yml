@@ -1,10 +1,10 @@
-name: Auto PR to Developer
+name: "Auto PR to Developer"
 
 # Quando um review e aprovado em uma feature branch,
 # cria automaticamente um PR para a branch developer.
 # Ref: Git Workflow & ClickUp Integration - Secao 6.2 Workflow 1
 
-"on":
+on:
   pull_request_review:
     types: [submitted]
 
@@ -45,21 +45,15 @@ jobs:
         run: |
           BRANCH="${{ github.event.pull_request.head.ref }}"
           REVIEWER="${{ github.event.review.user.login }}"
-          PR_TITLE="[Auto] Merge ${BRANCH} to developer"
-          PR_BODY="$(cat <<EOF
-          ## Auto-generated PR
+          gh pr create \
+            --head "$BRANCH" \
+            --base developer \
+            --title "[Auto] Merge ${BRANCH} to developer" \
+            --body "## Auto-generated PR
 
           **Source:** \`${BRANCH}\`
           **Approved by:** @${REVIEWER}
           **Original PR:** #${{ github.event.pull_request.number }}
 
           This PR was auto-created after code review approval.
-          Merge to \`developer\` triggers QA pipeline and staging deploy.
-          EOF
-          )"
-
-          gh pr create \
-            --head "$BRANCH" \
-            --base developer \
-            --title "$PR_TITLE" \
-            --body "$PR_BODY"
+          Merge to \`developer\` triggers QA pipeline and staging deploy."

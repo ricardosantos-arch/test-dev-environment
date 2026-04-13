@@ -1,6 +1,6 @@
-name: Lint & Unit Tests
+name: "Lint and Unit Tests"
 
-"on":
+on:
   pull_request:
     branches: [developer]
     types: [opened, synchronize, reopened]
@@ -34,7 +34,7 @@ jobs:
         if: steps.detect.outputs.lang == 'python'
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install Python linters
         if: steps.detect.outputs.lang == 'python'
@@ -52,7 +52,7 @@ jobs:
         if: steps.detect.outputs.lang == 'node'
         uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: Install and lint (Node)
         if: steps.detect.outputs.lang == 'node'
@@ -101,7 +101,7 @@ jobs:
         if: steps.detect.outputs.lang == 'python'
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install dependencies and test (Python)
         if: steps.detect.outputs.lang == 'python'
@@ -114,7 +114,7 @@ jobs:
         if: steps.detect.outputs.lang == 'node'
         uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: Install and test (Node)
         if: steps.detect.outputs.lang == 'node'
