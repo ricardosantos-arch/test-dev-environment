@@ -1,6 +1,6 @@
 name: Lint & Unit Tests
 
-on:
+"on":
   pull_request:
     branches: [developer]
     types: [opened, synchronize, reopened]

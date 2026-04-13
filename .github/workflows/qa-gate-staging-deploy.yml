@@ -8,7 +8,7 @@ name: QA Gate & Staging Deploy
 # Staging: proffer-all-staging (GCP Project ID: proffer-all-staging)
 # Folder: 251321851737
 
-on:
+"on":
   push:
     branches: [developer]
 

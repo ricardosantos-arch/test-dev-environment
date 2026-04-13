@@ -4,7 +4,7 @@ name: Auto PR to Developer
 # cria automaticamente um PR para a branch developer.
 # Ref: Git Workflow & ClickUp Integration - Secao 6.2 Workflow 1
 
-on:
+"on":
   pull_request_review:
     types: [submitted]
 

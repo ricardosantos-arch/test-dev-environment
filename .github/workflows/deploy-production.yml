@@ -19,7 +19,7 @@ name: Deploy to Production
 # └── Monitoring and Ops (129366158177)
 #     └── proffer-monitoring-prod
 
-on:
+"on":
   push:
     branches: [main]
 
