@@ -1,8 +1,7 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 name: "ClickUp Status Sync"
-
 # Sincroniza status do card ClickUp quando um review e submetido.
 # Ref: Git Workflow & ClickUp Integration - Secao 6.2 Workflow 2
-
 on:
   pull_request_review:
     types: [submitted]

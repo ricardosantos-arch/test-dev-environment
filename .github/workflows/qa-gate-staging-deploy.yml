@@ -1,13 +1,10 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 name: "QA Gate and Staging Deploy"
-
 # Apos merge na developer, executa testes completos e deploya em staging.
 # Se aprovado: atualiza ClickUp para READY TO DEPLOY e cria PR para main.
 # Se falhar: atualiza ClickUp para QA FAILED.
 # Ref: Git Workflow & ClickUp Integration - Secao 5.3 e 6.2 Workflow 3
-#
-# Staging: proffer-all-staging (GCP Project ID: proffer-all-staging)
-# Folder: 251321851737
-
+# Staging: proffer-all-staging | Folder: 251321851737
 on:
   push:
     branches: [developer]

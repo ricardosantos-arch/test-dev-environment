@@ -1,8 +1,7 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 name: "Deploy to Production"
-
 # Dispara quando um merge e feito na branch main.
 # Determina quais projetos GCP devem ser atualizados com base nos arquivos alterados.
-
 on:
   push:
     branches: [main]
