@@ -1,0 +1,65 @@
+name: Auto PR to Developer
+
+# Quando um review e aprovado em uma feature branch,
+# cria automaticamente um PR para a branch developer.
+# Ref: Git Workflow & ClickUp Integration - Secao 6.2 Workflow 1
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  create-pr:
+    if: >
+      github.event.review.state == 'approved' &&
+      startsWith(github.event.pull_request.head.ref, 'feature/') &&
+      github.event.pull_request.base.ref != 'developer'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check if PR to developer already exists
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="${{ github.event.pull_request.head.ref }}"
+          EXISTING=$(gh pr list --head "$BRANCH" --base developer --json number --jq '.[0].number // empty')
+          if [ -n "$EXISTING" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "PR #$EXISTING already exists for $BRANCH -> developer"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create PR to developer
+        if: steps.check.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="${{ github.event.pull_request.head.ref }}"
+          REVIEWER="${{ github.event.review.user.login }}"
+          PR_TITLE="[Auto] Merge ${BRANCH} to developer"
+          PR_BODY="$(cat <<EOF
+          ## Auto-generated PR
+
+          **Source:** \`${BRANCH}\`
+          **Approved by:** @${REVIEWER}
+          **Original PR:** #${{ github.event.pull_request.number }}
+
+          This PR was auto-created after code review approval.
+          Merge to \`developer\` triggers QA pipeline and staging deploy.
+          EOF
+          )"
+
+          gh pr create \
+            --head "$BRANCH" \
+            --base developer \
+            --title "$PR_TITLE" \
+            --body "$PR_BODY"
