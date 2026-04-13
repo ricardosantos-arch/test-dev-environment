@@ -1,0 +1,78 @@
+name: ClickUp Status Sync
+
+# Sincroniza status do card ClickUp quando um review e submetido.
+# Ref: Git Workflow & ClickUp Integration - Secao 6.2 Workflow 2
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extract ClickUp Task ID from branch name
+        id: extract
+        run: |
+          BRANCH="${{ github.event.pull_request.head.ref }}"
+          echo "Branch: $BRANCH"
+
+          # Extrai task ID do formato: feature/TASKID_nome-da-task
+          TASK_ID=$(echo "$BRANCH" | sed -n 's|^[^/]*/\([a-z0-9]*\)_.*|\1|p')
+
+          if [ -z "$TASK_ID" ]; then
+            # Tenta formato alternativo: feature/TASKID-nome-da-task
+            TASK_ID=$(echo "$BRANCH" | sed -n 's|^[^/]*/\([a-z0-9]*\)-.*|\1|p')
+          fi
+
+          if [ -z "$TASK_ID" ]; then
+            echo "No ClickUp task ID found in branch name: $BRANCH"
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "task_id=$TASK_ID" >> $GITHUB_OUTPUT
+            echo "skip=false" >> $GITHUB_OUTPUT
+            echo "Found ClickUp task ID: $TASK_ID"
+          fi
+
+      - name: Update ClickUp Status
+        if: steps.extract.outputs.skip != 'true'
+        env:
+          CLICKUP_API_TOKEN: ${{ secrets.CLICKUP_API_TOKEN }}
+        run: |
+          TASK_ID="${{ steps.extract.outputs.task_id }}"
+          REVIEW_STATE="${{ github.event.review.state }}"
+          REVIEWER="${{ github.event.review.user.login }}"
+          PR_URL="${{ github.event.pull_request.html_url }}"
+          PR_TITLE="${{ github.event.pull_request.title }}"
+
+          if [ "$REVIEW_STATE" = "approved" ]; then
+            STATUS="qa / testing"
+            COMMENT="Code review aprovado por @${REVIEWER}. PR auto-criado para developer. [Ver PR](${PR_URL})"
+          elif [ "$REVIEW_STATE" = "changes_requested" ]; then
+            STATUS="changes req."
+            COMMENT="Code review reprovado por @${REVIEWER}. Verifique os apontamentos: [PR #${{ github.event.pull_request.number }}](${PR_URL})"
+          else
+            echo "Review state '$REVIEW_STATE' - no action needed"
+            exit 0
+          fi
+
+          echo "Updating ClickUp task $TASK_ID to status: $STATUS"
+
+          # Atualizar status
+          curl -s -X PUT \
+            "https://api.clickup.com/api/v2/task/${TASK_ID}" \
+            -H "Authorization: ${CLICKUP_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "{\"status\": \"${STATUS}\"}"
+
+          # Adicionar comentario
+          curl -s -X POST \
+            "https://api.clickup.com/api/v2/task/${TASK_ID}/comment" \
+            -H "Authorization: ${CLICKUP_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "{\"comment_text\": \"${COMMENT}\"}"
+
+          echo "ClickUp task $TASK_ID updated to: $STATUS"
