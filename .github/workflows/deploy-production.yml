@@ -1,0 +1,283 @@
+name: Deploy to Production
+
+# Dispara quando um merge e feito na branch main.
+# Determina quais projetos GCP devem ser atualizados com base nos arquivos alterados.
+# Ref: Git Workflow & ClickUp Integration - Secao 5.4
+#
+# Production GCP Projects:
+# ├── APIs and Services (530062424510)
+# │   ├── proffer-firebase-prod
+# │   └── proffer-parceiros-api-prod
+# ├── Data Platform (587108712594)
+# │   ├── proffer-bigquery-prod
+# │   ├── proffer-data-lake-prod
+# │   ├── proffer-dataflow-prod
+# │   └── proffer-dataplex-prod
+# ├── ML and Agents (672384596086)
+# │   ├── proffer-gemini-prod
+# │   └── proffer-vertex-ai-prod
+# └── Monitoring and Ops (129366158177)
+#     └── proffer-monitoring-prod
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  deployments: write
+
+env:
+  REGION: us-central1
+
+jobs:
+  detect-changes:
+    name: Detect changed domains
+    runs-on: ubuntu-latest
+    outputs:
+      api: ${{ steps.changes.outputs.api }}
+      data-platform: ${{ steps.changes.outputs.data-platform }}
+      ml: ${{ steps.changes.outputs.ml }}
+      monitoring: ${{ steps.changes.outputs.monitoring }}
+      infra: ${{ steps.changes.outputs.infra }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect changed paths
+        id: changes
+        run: |
+          CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "")
+          echo "Changed files:"
+          echo "$CHANGED"
+
+          # Determina dominio com base em paths alterados
+          # Ajustar estes patterns conforme a estrutura real do monorepo
+          echo "api=false" >> $GITHUB_OUTPUT
+          echo "data-platform=false" >> $GITHUB_OUTPUT
+          echo "ml=false" >> $GITHUB_OUTPUT
+          echo "monitoring=false" >> $GITHUB_OUTPUT
+          echo "infra=false" >> $GITHUB_OUTPUT
+
+          if echo "$CHANGED" | grep -qE '^(api/|src/api/|services/api)'; then
+            echo "api=true" >> $GITHUB_OUTPUT
+          fi
+
+          if echo "$CHANGED" | grep -qE '^(data/|etl/|dataform/|dags/|pipelines/)'; then
+            echo "data-platform=true" >> $GITHUB_OUTPUT
+          fi
+
+          if echo "$CHANGED" | grep -qE '^(ml/|models/|vertex/|agents/)'; then
+            echo "ml=true" >> $GITHUB_OUTPUT
+          fi
+
+          if echo "$CHANGED" | grep -qE '^(monitoring/|alerts/|dashboards/)'; then
+            echo "monitoring=true" >> $GITHUB_OUTPUT
+          fi
+
+          if echo "$CHANGED" | grep -qE '^(infra/|terraform/|cloudbuild/)'; then
+            echo "infra=true" >> $GITHUB_OUTPUT
+          fi
+
+          # Se nenhum dominio especifico detectado, assume deploy geral
+          if ! echo "$CHANGED" | grep -qE '^(api/|data/|etl/|ml/|monitoring/|infra/)'; then
+            echo "Nenhum dominio especifico detectado — deploy geral ativado"
+            echo "api=true" >> $GITHUB_OUTPUT
+            echo "data-platform=true" >> $GITHUB_OUTPUT
+          fi
+
+  deploy-api:
+    name: Deploy APIs
+    needs: detect-changes
+    if: needs.detect-changes.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    environment: production
+    strategy:
+      matrix:
+        project:
+          - id: proffer-parceiros-api-prod
+            name: Proffer Parceiros API
+          - id: proffer-firebase-prod
+            name: Proffer Firebase
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY_PRODUCTION }}
+
+      - name: Setup Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy to ${{ matrix.project.name }}
+        run: |
+          echo "Deploying to ${{ matrix.project.name }} (${{ matrix.project.id }})..."
+          echo "Project: ${{ matrix.project.id }}"
+          echo "Region: ${{ env.REGION }}"
+          echo "Commit: ${{ github.sha }}"
+
+          # Cloud Build trigger ou deploy direto
+          # gcloud builds submit --project=${{ matrix.project.id }} --config=cloudbuild.yaml
+          # ou
+          # gcloud run deploy SERVICE_NAME --project=${{ matrix.project.id }} --region=${{ env.REGION }} --image=IMAGE
+
+          echo "Deploy placeholder — configure Cloud Build triggers per project"
+
+  deploy-data-platform:
+    name: Deploy Data Platform
+    needs: detect-changes
+    if: needs.detect-changes.outputs.data-platform == 'true'
+    runs-on: ubuntu-latest
+    environment: production
+    strategy:
+      matrix:
+        project:
+          - id: proffer-bigquery-prod
+            name: Proffer BigQuery
+            type: dataform
+          - id: proffer-data-lake-prod
+            name: Proffer Data Lake
+            type: cloud-run
+          - id: proffer-dataflow-prod
+            name: Proffer Dataflow
+            type: dataflow
+          - id: proffer-dataplex-prod
+            name: Proffer Dataplex
+            type: dataplex
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY_PRODUCTION }}
+
+      - name: Setup Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy to ${{ matrix.project.name }}
+        run: |
+          echo "Deploying to ${{ matrix.project.name }} (${{ matrix.project.id }})..."
+          echo "Type: ${{ matrix.project.type }}"
+
+          case "${{ matrix.project.type }}" in
+            dataform)
+              echo "Trigger Dataform compilation and run"
+              # gcloud dataform repositories compile --project=${{ matrix.project.id }} --region=${{ env.REGION }}
+              ;;
+            cloud-run)
+              echo "Deploy Cloud Run service"
+              # gcloud run deploy ... --project=${{ matrix.project.id }}
+              ;;
+            dataflow)
+              echo "Deploy Dataflow templates"
+              # gcloud dataflow flex-template build ... --project=${{ matrix.project.id }}
+              ;;
+            dataplex)
+              echo "Update Dataplex assets"
+              # gcloud dataplex assets update ... --project=${{ matrix.project.id }}
+              ;;
+          esac
+
+          echo "Deploy placeholder — configure per project type"
+
+  deploy-ml:
+    name: Deploy ML & Agents
+    needs: detect-changes
+    if: needs.detect-changes.outputs.ml == 'true'
+    runs-on: ubuntu-latest
+    environment: production
+    strategy:
+      matrix:
+        project:
+          - id: proffer-vertex-ai-prod
+            name: Proffer Vertex AI
+          - id: proffer-gemini-prod
+            name: Proffer Gemini
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY_PRODUCTION }}
+
+      - name: Deploy to ${{ matrix.project.name }}
+        run: |
+          echo "Deploying ML artifacts to ${{ matrix.project.name }} (${{ matrix.project.id }})..."
+          echo "Deploy placeholder — configure Vertex AI pipeline/model deployment"
+
+  deploy-monitoring:
+    name: Deploy Monitoring
+    needs: detect-changes
+    if: needs.detect-changes.outputs.monitoring == 'true'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY_PRODUCTION }}
+
+      - name: Deploy monitoring configs
+        run: |
+          echo "Deploying to proffer-monitoring-prod..."
+          echo "Deploy placeholder — configure monitoring dashboards/alerts deployment"
+
+  update-clickup-done:
+    name: Update ClickUp to DONE
+    needs: [deploy-api, deploy-data-platform, deploy-ml, deploy-monitoring]
+    if: always() && !contains(needs.*.result, 'failure')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extract task IDs from merge commit
+        id: tasks
+        run: |
+          COMMIT_MSG="${{ github.event.head_commit.message }}"
+          TASK_IDS=$(echo "$COMMIT_MSG" | grep -oP '#[a-z0-9]+' | tr -d '#' | sort -u | tr '\n' ',' | sed 's/,$//')
+          echo "task_ids=$TASK_IDS" >> $GITHUB_OUTPUT
+
+      - name: Update ClickUp tasks to DONE
+        if: steps.tasks.outputs.task_ids != ''
+        env:
+          CLICKUP_API_TOKEN: ${{ secrets.CLICKUP_API_TOKEN }}
+        run: |
+          IFS=',' read -ra IDS <<< "${{ steps.tasks.outputs.task_ids }}"
+          for TASK_ID in "${IDS[@]}"; do
+            echo "Marking task $TASK_ID as DONE"
+            curl -s -X PUT \
+              "https://api.clickup.com/api/v2/task/${TASK_ID}" \
+              -H "Authorization: ${CLICKUP_API_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -d '{"status": "done"}'
+
+            curl -s -X POST \
+              "https://api.clickup.com/api/v2/task/${TASK_ID}/comment" \
+              -H "Authorization: ${CLICKUP_API_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -d "{\"comment_text\": \"Deploy em producao realizado com sucesso. Commit: ${{ github.sha }}. Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
+          done
+
+  notify-deploy:
+    name: Notify deployment
+    needs: [deploy-api, deploy-data-platform, deploy-ml, deploy-monitoring]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Summary
+        run: |
+          echo "## Production Deploy Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Domain | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| APIs | ${{ needs.deploy-api.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Data Platform | ${{ needs.deploy-data-platform.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| ML & Agents | ${{ needs.deploy-ml.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Monitoring | ${{ needs.deploy-monitoring.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Triggered by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
