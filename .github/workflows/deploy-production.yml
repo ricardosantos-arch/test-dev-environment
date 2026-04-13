@@ -41,7 +41,7 @@ jobs:
       monitoring: ${{ steps.changes.outputs.monitoring }}
       infra: ${{ steps.changes.outputs.infra }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 2
 
@@ -101,7 +101,7 @@ jobs:
           - id: proffer-firebase-prod
             name: Proffer Firebase
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Authenticate to GCP
         uses: google-github-actions/auth@v2
@@ -147,7 +147,7 @@ jobs:
             name: Proffer Dataplex
             type: dataplex
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Authenticate to GCP
         uses: google-github-actions/auth@v2
@@ -197,7 +197,7 @@ jobs:
           - id: proffer-gemini-prod
             name: Proffer Gemini
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Authenticate to GCP
         uses: google-github-actions/auth@v2
@@ -216,7 +216,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Authenticate to GCP
         uses: google-github-actions/auth@v2

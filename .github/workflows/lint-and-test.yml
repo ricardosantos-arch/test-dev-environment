@@ -15,7 +15,7 @@ jobs:
     name: lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Detect project type
         id: detect
@@ -50,7 +50,7 @@ jobs:
 
       - name: Setup Node
         if: steps.detect.outputs.lang == 'node'
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
 
@@ -82,7 +82,7 @@ jobs:
     name: unit-tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Detect project type
         id: detect
@@ -112,7 +112,7 @@ jobs:
 
       - name: Setup Node
         if: steps.detect.outputs.lang == 'node'
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
 
